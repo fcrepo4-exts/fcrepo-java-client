@@ -185,6 +185,7 @@ public class ConnectionManagementTest {
     @After
     public void tearDown() throws IOException {
         underTest.close();
+        client.close();
     }
 
     /**
