@@ -19,6 +19,7 @@ package org.fcrepo.client;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -56,7 +57,7 @@ import org.slf4j.Logger;
  * @author Aaron Coburn
  * @since October 20, 2014
  */
-public class FcrepoClient {
+public class FcrepoClient implements Closeable {
 
     private CloseableHttpClient httpclient;
 
@@ -83,11 +84,19 @@ public class FcrepoClient {
      */
     protected FcrepoClient(final String username, final String password, final String host,
             final Boolean throwExceptionOnFailure) {
+        this(new FcrepoHttpClientBuilder(username, password, host).build(), throwExceptionOnFailure);
+    }
 
-        final FcrepoHttpClientBuilder client = new FcrepoHttpClientBuilder(username, password, host);
-
+    /**
+     * Create a FcrepoClient which uses the given {@link org.apache.http.impl.client.CloseableHttpClient}.
+     * FcrepoClient will close the httpClient when {@link #close()} is called.
+     *
+     * @param httpClient http client to use to connect to the repository
+     * @param throwExceptionOnFailure whether to throw an exception on any non-2xx or 3xx HTTP responses
+     */
+    protected FcrepoClient(final CloseableHttpClient httpClient, final Boolean throwExceptionOnFailure) {
         this.throwExceptionOnFailure = throwExceptionOnFailure;
-        this.httpclient = client.build();
+        this.httpclient = httpClient;
     }
 
     /**
@@ -193,6 +202,11 @@ public class FcrepoClient {
      */
     public OptionsBuilder options(final URI url) {
         return new OptionsBuilder(url, this);
+    }
+
+    @Override
+    public void close() throws IOException {
+        this.httpclient.close();
     }
 
     /**
@@ -351,7 +365,8 @@ public class FcrepoClient {
          * @return the client constructed by this builder
          */
         public FcrepoClient build() {
-            return new FcrepoClient(authUser, authPassword, authHost, throwExceptionOnFailure);
+            final FcrepoHttpClientBuilder httpClient = new FcrepoHttpClientBuilder(authUser, authPassword, authHost);
+            return new FcrepoClient(httpClient.build(), throwExceptionOnFailure);
         }
     }
 }
